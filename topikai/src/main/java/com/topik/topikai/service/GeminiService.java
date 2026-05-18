@@ -11,7 +11,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 public class GeminiService {
 
     // 🎯 Nhớ dán API Key "AIzaSyDCs..." của bạn vào đây nhé
-    private final String GEMINI_API_KEY = "AIzaSyDCs_2QCI7m5P5kWBpRV-2UVUsltQp5068";
+    private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY") != null ? System.getenv("GEMINI_API_KEY") : "AIzaSyDCs_2QCI7m5P5KWDpRV-2UVUsltQp5Q68";
 
     // 🎯 SỬ DỤNG BẢN LITE: gemini-2.5-flash-lite (Hạn mức 1000 lượt/ngày của Google)
     private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + GEMINI_API_KEY;
