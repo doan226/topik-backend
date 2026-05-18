@@ -4,8 +4,8 @@ WORKDIR /app
 COPY . .
 RUN mvn clean package -DskipTests
 
-# Bước 2: Sử dụng Eclipse Temurin JDK 17 (hoặc 21) siêu nhẹ để chạy file .jar
-FROM eclipse-temurin:17-jdk-slim
+# Bước 2: Sử dụng Eclipse Temurin JDK 17 tiêu chuẩn (đã rất tối ưu rồi)
+FROM eclipse-temurin:17-jdk
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
