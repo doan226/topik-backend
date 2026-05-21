@@ -15,6 +15,7 @@ public class GeminiService {
 
     // 🎯 SỬ DỤNG BẢN ỔN ĐỊNH: gemini-1.5-flash
     // Đổi sang mô hình gemini-1.0-pro để vượt qua bộ lọc phân vùng IP của Render
+    // Đảm bảo dòng URL đầu file của bạn trông chính xác như thế này:
     private final String API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
 
     // --- PHƯƠNG THỨC 1: CHẤM ĐIỂM ---
