@@ -1,5 +1,7 @@
 package com.topik.topikai.controller;
 
+import org.springframework.web.bind.annotation.CrossOrigin; // 1. NHỚ IMPORT DÒNG NÀY
+import org.springframework.web.bind.annotation.RestController;
 import com.topik.topikai.entity.UserAnswer;
 import com.topik.topikai.repository.UserAnswerRepository;
 import com.topik.topikai.service.GeminiService;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/topik")
 @CrossOrigin(origins = "*")
 public class SubmissionController {
+
 
     @Autowired
     private GeminiService aiService;

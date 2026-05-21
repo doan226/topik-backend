@@ -10,12 +10,15 @@ import org.springframework.web.client.HttpStatusCodeException;
 @Service
 public class GeminiService {
 
-    // 🎯 Nhớ dán API Key "AIzaSyDCs..." của bạn vào đây nhé
-    private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY") != null ? System.getenv("GEMINI_API_KEY") : "AIzaSyClB43popBaODtcPUh-DvnAm9sjpw_5qag";
+    // 🎯 Nhớ dán API Key "AIzaSy..." của bạn vào đây
+    private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY") != null
+            ? System.getenv("GEMINI_API_KEY")
+            : "AIzaSyBOwX1fZW-HZKzYPfoMFJd5WYW4lTsr8Sc";
 
-    // 🎯 SỬ DỤNG BẢN LITE: gemini-2.5-flash-lite (Hạn mức 1000 lượt/ngày của Google)
-    private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=" + GEMINI_API_KEY;
+    // 🎯 SỬ DỤNG BẢN ỔN ĐỊNH: gemini-1.5-flash
+    private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
 
+    // --- PHƯƠNG THỨC 1: CHẤM ĐIỂM ---
     public String gradeTopikWriting(String studentText, int questionType) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -34,6 +37,7 @@ public class GeminiService {
         return callRealGeminiApi(restTemplate, headers, systemPrompt, true);
     }
 
+    // --- PHƯƠNG THỨC 2: TẠO BÀI TẬP (ĐÃ KHÔI PHỤC) ---
     public String analyzeErrorsAndGenerateTest(String errorHistory) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -46,6 +50,7 @@ public class GeminiService {
         return callRealGeminiApi(restTemplate, headers, systemPrompt, false);
     }
 
+    // --- PHƯƠNG THỨC GỌI API CHUNG ---
     private String callRealGeminiApi(RestTemplate restTemplate, HttpHeaders headers, String systemPrompt, boolean isGrading) {
         try {
             JSONObject jsonBody = new JSONObject();
@@ -65,6 +70,7 @@ public class GeminiService {
             jsonBody.put("contents", contentsArray);
 
             HttpEntity<String> request = new HttpEntity<>(jsonBody.toString(), headers);
+
             ResponseEntity<String> response = restTemplate.postForEntity(API_URL, request, String.class);
             JSONObject jsonObj = new JSONObject(response.getBody());
 
@@ -72,20 +78,17 @@ public class GeminiService {
 
         } catch (HttpStatusCodeException e) {
             String errorDetail = e.getResponseBodyAsString();
-            System.err.println("🔴 GOOGLE BÁO LỖI (" + e.getStatusCode() + "): " + errorDetail);
+            System.err.println("🔴 LỖI TỪ GOOGLE API: " + e.getStatusCode());
+            System.err.println("🔴 CHI TIẾT LỖI: " + errorDetail);
 
             if (isGrading) {
-                return "{\n  \"total_score\": 0,\n  \"grammar_errors\": [],\n  \"native_suggestion\": \"⚠️ LỖI GOOGLE API (" + e.getStatusCode() + "). Hãy xem chi tiết lỗi màu đỏ trong IntelliJ Console!\"\n}";
+                return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Google API lỗi (" + e.getStatusCode() + "). Kiểm tra console để xem chi tiết!\" }";
             } else {
-                return "{\n  \"main_weakness\": \"Lỗi kết nối API\",\n  \"analysis\": \"⚠️ LỖI GOOGLE API (" + e.getStatusCode() + "). Hãy xem chi tiết lỗi màu đỏ trong IntelliJ Console!\",\n  \"mini_test\": []\n}";
+                return "{\"main_weakness\": \"Lỗi kết nối API\", \"analysis\": \"⚠️ Google API lỗi (" + e.getStatusCode() + ").\", \"mini_test\": [] }";
             }
         } catch (Exception e) {
-            System.err.println("🔴 LỖI JAVA: " + e.getMessage());
-            if (isGrading) {
-                return "{\n  \"total_score\": 0,\n  \"grammar_errors\": [],\n  \"native_suggestion\": \"⚠️ LỖI JAVA: " + e.getMessage() + "\"\n}";
-            } else {
-                return "{\n  \"main_weakness\": \"Lỗi Java\",\n  \"analysis\": \"⚠️ LỖI: " + e.getMessage() + "\",\n  \"mini_test\": []\n}";
-            }
+            e.printStackTrace();
+            return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Lỗi Java: " + e.getMessage() + "\"}";
         }
     }
 }

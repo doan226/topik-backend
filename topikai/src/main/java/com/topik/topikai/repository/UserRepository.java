@@ -12,4 +12,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Hàm kiểm tra xem tên đăng nhập đã bị người khác đăng ký chưa
     boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
 }

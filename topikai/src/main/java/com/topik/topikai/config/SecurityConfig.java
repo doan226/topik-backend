@@ -20,22 +20,28 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(4);
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // 🎯 FIX: Mở khóa CORS cho Security
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Mở khóa CORS cho Security
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // 1. Mở cửa tự do cho Đăng nhập, Đăng ký, Xác nhận OTP và các API công khai
                         .requestMatchers("/api/v1/auth/**", "/api/v1/topik/**", "/api/v1/dashboard/**").permitAll()
+
+                        // 2. BƯỚC 4 - PHÂN QUYỀN: Chỉ những User có Role là PREMIUM mới được vào đường dẫn này
+                        .requestMatchers("/api/v1/premium-features/**").hasAuthority("PREMIUM")
+
+                        // 3. Tất cả các đường dẫn khác đều bắt buộc phải đăng nhập mới được xem
                         .anyRequest().authenticated()
                 );
         return http.build();
     }
 
-    // 🎯 FIX: Cấu hình cho phép React gọi API mà không bị chặn
+    // Cấu hình cho phép React gọi API mà không bị chặn
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
