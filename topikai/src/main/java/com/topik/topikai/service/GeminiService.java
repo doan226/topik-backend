@@ -49,13 +49,9 @@ public class GeminiService {
     private String callRealGeminiApi(RestTemplate restTemplate, HttpHeaders headers, String systemPrompt, boolean isGrading) {
         try {
             JSONObject jsonBody = new JSONObject();
-            JSONObject generationConfig = new JSONObject();
-
-            // Sửa thành response_mime_type viết thường có gạch dưới
-            generationConfig.put("response_mime_type", "application/json"); 
-
-            // Sửa thành generation_config viết thường có gạch dưới
-            jsonBody.put("generation_config", generationConfig);
+            
+            // ❌ XÓA BỎ HOÀN TOÀN TẤT CẢ CÁC DÒNG generationConfig / generation_config GÂY LỖI 400
+            // Chúng ta không gửi bất kỳ cấu hình định dạng nào sang cho Google bắt bẻ nữa.
 
             JSONArray contentsArray = new JSONArray();
             JSONObject partsObject = new JSONObject();
@@ -73,7 +69,37 @@ public class GeminiService {
             ResponseEntity<String> response = restTemplate.postForEntity(API_URL, request, String.class);
             JSONObject jsonObj = new JSONObject(response.getBody());
 
-            return jsonObj.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+            String rawText = jsonObj.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+            
+            // Đề phòng trường hợp AI trả về text có bọc dấu định dạng Markdown ```json ... ```
+            if (rawText.contains("```json")) {
+                rawText = rawText.substring(rawText.indexOf("```json") + 7);
+                if (rawText.contains("```")) {
+                    rawText = rawText.substring(0, rawText.indexOf("```"));
+                }
+            } else if (rawText.contains("```")) {
+                rawText = rawText.substring(rawText.indexOf("```") + 3);
+                if (rawText.contains("```")) {
+                    rawText = rawText.substring(0, rawText.indexOf("```"));
+                }
+            }
+            return rawText.trim();
+
+        } catch (HttpStatusCodeException e) {
+            String errorDetail = e.getResponseBodyAsString();
+            System.err.println("🔴 LỖI TỪ GOOGLE API: " + e.getStatusCode());
+            System.err.println("🔴 CHI TIẾT LỖI: " + errorDetail);
+
+            if (isGrading) {
+                return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Google API lỗi (" + e.getStatusCode() + "). Kiểm tra console để xem chi tiết!\" }";
+            } else {
+                return "{\"main_weakness\": \"Lỗi kết nối API\", \"analysis\": \"⚠️ Google API lỗi (" + e.getStatusCode() + ").\", \"mini_test\": [] }";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Lỗi Java: " + e.getMessage() + "\"}";
+        }
+    }
 
         } catch (HttpStatusCodeException e) {
             String errorDetail = e.getResponseBodyAsString();
