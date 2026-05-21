@@ -14,7 +14,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "https://topik-frontend-red.vercel.app", allowCredentials = "true")
 public class AuthController {
 
     @Autowired
