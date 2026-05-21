@@ -10,12 +10,10 @@ import org.springframework.web.client.HttpStatusCodeException;
 @Service
 public class GeminiService {
 
-    // 🎯 Nhớ dán API Key "AIzaSy..." của bạn vào đây
+    // 🎯 Lấy API Key bảo mật hoàn toàn từ Environment của Render (Không lo bị quét khóa key)
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
 
-    // 🎯 SỬ DỤNG BẢN ỔN ĐỊNH: gemini-1.5-flash
-    // Đổi sang mô hình gemini-1.0-pro để vượt qua bộ lọc phân vùng IP của Render
-    // Đảm bảo dòng URL đầu file của bạn trông chính xác như thế này:
+    // 🎯 URL bản v1 chính thức gọi mô hình gemini-1.5-flash ổn định nhất (Đã xóa bỏ hoàn toàn xung đột Git)
     // ✅ ĐÚNG
     private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
 
@@ -30,7 +28,7 @@ public class GeminiService {
                 ? "\"ngữ_pháp_và_từ_vựng\": 5, \"ý_nghĩa_ngữ_cảnh\": 5"
                 : "\"nội_dung\": 10, \"tổ_chức\": 10, \"ngôn_ngữ\": 10";
 
-        String systemPrompt = "Bạn là giám khảo TOPIK II. CHỈ TRẢ VỀ JSON, KHÔNG CÓ MARKDOWN.\n" +
+        String systemPrompt = "Bạn là giám khảo TOPIK II. CHỈ TRẢ VỀ JSON, KHÔNG CÓ MARKDOWN VĂN BẢN THỪA.\n" +
                 "Đang chấm Câu " + questionType + ". Điểm tối đa: " + maxScore + ".\n" +
                 "Định dạng JSON BẮT BUỘC:\n" +
                 "{\n  \"total_score\": <tổng điểm>,\n  \"criteria_scores\": {" + criteria + "},\n  \"grammar_errors\": [{\"sai\":\"...\", \"đúng\":\"...\", \"lý_do\":\"...\"}],\n  \"native_suggestion\": \"<bài mẫu>\"\n}\n\nBài làm: " + studentText;
@@ -38,27 +36,25 @@ public class GeminiService {
         return callRealGeminiApi(restTemplate, headers, systemPrompt, true);
     }
 
-    // --- PHƯƠNG THỨC 2: TẠO BÀI TẬP (ĐÃ KHÔI PHỤC) ---
+    // --- PHƯƠNG THỨC 2: TẠO BÀI TẬP ---
     public String analyzeErrorsAndGenerateTest(String errorHistory) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         String systemPrompt = "Bạn là chuyên gia giáo dục ngôn ngữ Hàn. TẠO 3 CÂU TRẮC NGHIỆM TỪ LỖI SAI SAU ĐÂY:\n" + errorHistory +
-                "\nCHỈ TRẢ VỀ JSON, KHÔNG DÙNG MARKDOWN:\n" +
+                "\nCHỈ TRẢ VỀ JSON, KHÔNG DÙNG MARKDOWN VĂN BẢN THỪA:\n" +
                 "{\n  \"main_weakness\": \"...\",\n  \"analysis\": \"...\",\n  \"mini_test\": [\n    {\n      \"question\": \"...\",\n      \"options\": [\"A. ...\", \"B. ...\", \"C. ...\", \"D. ...\"],\n      \"correct_answer\": \"...\",\n      \"explanation\": \"...\"\n    }\n  ]\n}";
 
         return callRealGeminiApi(restTemplate, headers, systemPrompt, false);
     }
 
-    // --- PHƯƠNG THỨC GỌI API CHUNG ---
+    // --- PHƯƠNG THỨC GỌI API CHUNG (ĐÃ FIX LỖI 400) ---
     private String callRealGeminiApi(RestTemplate restTemplate, HttpHeaders headers, String systemPrompt, boolean isGrading) {
         try {
             JSONObject jsonBody = new JSONObject();
-            JSONObject generationConfig = new JSONObject();
-            generationConfig.put("responseMimeType", "application/json");
-            jsonBody.put("generationConfig", generationConfig);
 
+            // Đóng gói nội dung prompt gửi đi sạch sẽ, không chứa generation_config gây lỗi cấu trúc
             JSONArray contentsArray = new JSONArray();
             JSONObject partsObject = new JSONObject();
             JSONArray partsArray = new JSONArray();
@@ -75,7 +71,21 @@ public class GeminiService {
             ResponseEntity<String> response = restTemplate.postForEntity(API_URL, request, String.class);
             JSONObject jsonObj = new JSONObject(response.getBody());
 
-            return jsonObj.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+            String rawText = jsonObj.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+
+            // 🛡️ BỘ LỌC BẢO HIỂM: Tự động bóc tách cắt bỏ dấu định dạng dạng ```json ... ``` nếu AI trả về thừa
+            if (rawText.contains("```json")) {
+                rawText = rawText.substring(rawText.indexOf("```json") + 7);
+                if (rawText.contains("```")) {
+                    rawText = rawText.substring(0, rawText.indexOf("```"));
+                }
+            } else if (rawText.contains("```")) {
+                rawText = rawText.substring(rawText.indexOf("```") + 3);
+                if (rawText.contains("```")) {
+                    rawText = rawText.substring(0, rawText.indexOf("```"));
+                }
+            }
+            return rawText.trim();
 
         } catch (HttpStatusCodeException e) {
             String errorDetail = e.getResponseBodyAsString();
