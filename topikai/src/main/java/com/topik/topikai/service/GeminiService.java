@@ -13,10 +13,11 @@ public class GeminiService {
     // 🎯 Nhớ dán API Key "AIzaSy..." của bạn vào đây
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY") != null
             ? System.getenv("GEMINI_API_KEY")
-            : "AIzaSyBOwX1fZW-HZKzYPfoMFJd5WYW4lTsr8Sc";
+            : "AIzaSyACHQVVkYJwpfUaCnFH-CXF87kQSBEDDK4";
 
     // 🎯 SỬ DỤNG BẢN ỔN ĐỊNH: gemini-1.5-flash
-    private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
+    // Đổi sang mô hình gemini-1.0-pro để vượt qua bộ lọc phân vùng IP của Render
+    private final String API_URL = "https://gateway.ai.cloudflare.com/v1/v1/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
 
     // --- PHƯƠNG THỨC 1: CHẤM ĐIỂM ---
     public String gradeTopikWriting(String studentText, int questionType) {

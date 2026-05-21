@@ -42,13 +42,20 @@ public class SecurityConfig {
     }
 
     // Cấu hình cho phép React gọi API mà không bị chặn
+    // Cấu hình cho phép React gọi API chuẩn hóa bảo mật
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*")); // Cho phép mọi domain (React) gọi tới
+
+        // Chỉ đích danh các nguồn được phép truy cập dữ liệu hệ thống
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173",                     // React khi chạy dưới máy local
+                "https://topik-frontend-red.vercel.app"      // Tên miền Vercel thật của bạn trên mạng
+        ));
+
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(true); // Bây giờ dòng này đã hợp pháp vì domain đã rõ ràng
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
