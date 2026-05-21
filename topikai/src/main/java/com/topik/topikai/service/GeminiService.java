@@ -50,9 +50,12 @@ public class GeminiService {
         try {
             JSONObject jsonBody = new JSONObject();
             JSONObject generationConfig = new JSONObject();
-            // Cấu hình này bắt buộc phải đi với mô hình gemini-1.5-flash ở trên!
-            generationConfig.put("responseMimeType", "application/json");
-            jsonBody.put("generationConfig", generationConfig);
+
+            // Sửa thành response_mime_type viết thường có gạch dưới
+            generationConfig.put("response_mime_type", "application/json"); 
+
+            // Sửa thành generation_config viết thường có gạch dưới
+            jsonBody.put("generation_config", generationConfig);
 
             JSONArray contentsArray = new JSONArray();
             JSONObject partsObject = new JSONObject();
