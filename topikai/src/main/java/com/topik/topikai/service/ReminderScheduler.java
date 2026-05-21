@@ -22,7 +22,7 @@ public class ReminderScheduler {
      * "0 0 20 * * ?" có nghĩa là: 0 giây, 0 phút, 20 giờ (8h tối), mỗi ngày.
      * zone = "Asia/Seoul": Ép Render chạy theo đúng múi giờ Hàn Quốc (Tránh bị gửi nhầm giờ do server quốc tế).
      */
-    @Scheduled(fixedRate = 120000)
+    @Scheduled(cron = "0 0 20 * * ?", zone = "Asia/Seoul")
     public void sendDailyReminders() {
         System.out.println("⏳ Đang bắt đầu tiến trình gửi mail nhắc nhở tự động...");
 
