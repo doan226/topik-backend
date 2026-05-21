@@ -1,4 +1,4 @@
-package com.topik.topikai.service; // Chỉnh lại theo đúng package của bạn
+package com.topik.topikai.service;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -23,6 +23,9 @@ public class EmailService {
     // URL chuẩn của Brevo API để gửi mail (Cổng HTTPS 443 xuyên mọi tường lửa)
     private final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
+    // ==========================================
+    // 1. HÀM GỬI MAIL XÁC THỰC OTP (KHI ĐĂNG KÝ)
+    // ==========================================
     public void sendVerificationEmail(String toEmail, String otpCode) {
         try {
             RestTemplate restTemplate = new RestTemplate();
@@ -66,10 +69,60 @@ public class EmailService {
             HttpEntity<String> request = new HttpEntity<>(jsonBody.toString(), headers);
             ResponseEntity<String> response = restTemplate.postForEntity(BREVO_API_URL, request, String.class);
 
-            System.out.println("✅ Gửi mail thành công qua Brevo API! Trạng thái: " + response.getStatusCode());
+            System.out.println("✅ Gửi mail OTP thành công qua Brevo API! Trạng thái: " + response.getStatusCode());
 
         } catch (Exception e) {
-            System.err.println("🔴 LỖI GỬI MAIL BREVO API: " + e.getMessage());
+            System.err.println("🔴 LỖI GỬI MAIL OTP BREVO API: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // ==========================================
+    // 2. HÀM GỬI MAIL NHẮC NHỞ HỌC TẬP (MỚI THÊM)
+    // ==========================================
+    public void sendReminderEmail(String toEmail, String username) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("accept", "application/json");
+            headers.set("api-key", brevoApiKey);
+
+            JSONObject jsonBody = new JSONObject();
+
+            JSONObject sender = new JSONObject();
+            sender.put("name", "TOPIK AI Master");
+            sender.put("email", senderEmail);
+            jsonBody.put("sender", sender);
+
+            JSONArray toArray = new JSONArray();
+            JSONObject receiver = new JSONObject();
+            receiver.put("email", toEmail);
+            toArray.put(receiver);
+            jsonBody.put("to", toArray);
+
+            jsonBody.put("subject", "Đến giờ ôn thi TOPIK rồi bạn ơi! 📚");
+
+            // Thiết kế giao diện HTML truyền cảm hứng cho việc học
+            String htmlContent = "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; max-width: 600px; margin: auto;'>"
+                    + "<h2 style='color: #3182ce; text-align: center;'>Chào " + username + ",</h2>"
+                    + "<p style='font-size: 16px; color: #4a5568;'>Kỳ thi TOPIK đang đến gần. Đừng quên dành ít nhất 30 phút hôm nay để luyện đề trên hệ thống TOPIK AI Master nhé!</p>"
+                    + "<div style='text-align: center; margin: 30px 0;'>"
+                    + "<a href='https://topik-frontend-red.vercel.app' style='background-color: #3182ce; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Vào Học Ngay</a>"
+                    + "</div>"
+                    + "<p style='font-size: 14px; color: #718096; text-align: center;'>Chúc bạn học tập hiệu quả! 화이팅! 🚀</p>"
+                    + "</div>";
+
+            jsonBody.put("htmlContent", htmlContent);
+
+            HttpEntity<String> request = new HttpEntity<>(jsonBody.toString(), headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(BREVO_API_URL, request, String.class);
+
+            System.out.println("✅ Đã gửi mail nhắc nhở thành công tới: " + toEmail);
+
+        } catch (Exception e) {
+            System.err.println("🔴 LỖI GỬI MAIL NHẮC NHỞ: " + e.getMessage());
             e.printStackTrace();
         }
     }
