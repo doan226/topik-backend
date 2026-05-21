@@ -10,15 +10,12 @@ import org.springframework.web.client.HttpStatusCodeException;
 @Service
 public class GeminiService {
 
-    // 🎯 Nhớ dán API Key "AIzaSy..." của bạn vào đây
+    // 🎯 Lấy API Key hoàn toàn bảo mật từ Environment của Render
     private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
 
-    // 🎯 SỬ DỤNG BẢN ỔN ĐỊNH: gemini-1.5-flash
-    // Đổi sang mô hình gemini-1.0-pro để vượt qua bộ lọc phân vùng IP của Render
-    // Đảm bảo dòng URL đầu file của bạn trông chính xác như thế này:
-    private final String API_URL = "https://api.api2gpt.com/v1/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
+    // 🎯 URL bản v1 chính thức gọi gemini-1.5-flash (Không dùng v1beta, không dùng gemini-1.0-pro)
+    private final String API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
 
-    // --- PHƯƠNG THỨC 1: CHẤM ĐIỂM ---
     public String gradeTopikWriting(String studentText, int questionType) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -37,7 +34,6 @@ public class GeminiService {
         return callRealGeminiApi(restTemplate, headers, systemPrompt, true);
     }
 
-    // --- PHƯƠNG THỨC 2: TẠO BÀI TẬP (ĐÃ KHÔI PHỤC) ---
     public String analyzeErrorsAndGenerateTest(String errorHistory) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -50,11 +46,11 @@ public class GeminiService {
         return callRealGeminiApi(restTemplate, headers, systemPrompt, false);
     }
 
-    // --- PHƯƠNG THỨC GỌI API CHUNG ---
     private String callRealGeminiApi(RestTemplate restTemplate, HttpHeaders headers, String systemPrompt, boolean isGrading) {
         try {
             JSONObject jsonBody = new JSONObject();
             JSONObject generationConfig = new JSONObject();
+            // Cấu hình này bắt buộc phải đi với mô hình gemini-1.5-flash ở trên!
             generationConfig.put("responseMimeType", "application/json");
             jsonBody.put("generationConfig", generationConfig);
 
