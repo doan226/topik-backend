@@ -94,12 +94,11 @@ public class AuthController {
         return response;
     }
 
-    // 3. API XÁC THỰC MÃ OTP (Mới được bổ sung để kết nối với React)
+    // 3. API XÁC THỰC MÃ OTP
     @PostMapping("/verify")
     public Map<String, Object> verifyUser(@RequestBody VerifyRequest request) {
         Map<String, Object> response = new HashMap<>();
 
-        // Tìm kiếm user theo tên đăng nhập
         Optional<User> userOptional = userRepository.findByUsername(request.getUsername());
 
         if (userOptional.isEmpty()) {
@@ -110,11 +109,10 @@ public class AuthController {
 
         User user = userOptional.get();
 
-        // Kiểm tra xem mã OTP người dùng nhập vào có khớp với mã lưu trong Database không
         if (user.getVerificationCode() != null && user.getVerificationCode().equals(request.getCode())) {
-            user.setVerified(true);         // Kích hoạt tài khoản thành công
-            user.setVerificationCode(null);  // Xóa mã OTP cũ đi để bảo mật
-            userRepository.save(user);      // Lưu lại thay đổi xuống DB
+            user.setVerified(true);
+            user.setVerificationCode(null);
+            userRepository.save(user);
 
             response.put("success", true);
             response.put("message", "Xác thực tài khoản thành công!");
@@ -123,6 +121,36 @@ public class AuthController {
             response.put("message", "Mã xác thực không chính xác hoặc đã hết hạn!");
         }
 
+        return response;
+    }
+
+    // 4. API NÂNG CẤP TÀI KHOẢN LÊN PREMIUM
+    @PostMapping("/upgrade")
+    public Map<String, Object> upgradeUser(@RequestBody UpgradeRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        // Giả lập: Khách nhập đúng chữ "VIP" thì cho lên Premium
+        if ("VIP".equalsIgnoreCase(request.getCode())) {
+            Optional<User> userOpt = userRepository.findById(request.getUserId());
+
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                user.setRole(Role.PREMIUM_USER); // Đổi hạng
+                userRepository.save(user); // Lưu thẳng xuống DB
+
+                response.put("success", true);
+                response.put("message", "Nâng cấp Premium thành công!");
+                response.put("newRole", "PREMIUM_USER");
+                return response;
+            } else {
+                response.put("success", false);
+                response.put("message", "Không tìm thấy tài khoản người dùng!");
+                return response;
+            }
+        }
+
+        response.put("success", false);
+        response.put("message", "Mã giao dịch không hợp lệ!");
         return response;
     }
 }
@@ -142,7 +170,7 @@ class AuthRequest {
     public String getEmail() { return email; }
 }
 
-// Lớp DTO mới hứng dữ liệu xác thực OTP từ React gửi lên
+// Lớp DTO hứng dữ liệu xác thực OTP
 class VerifyRequest {
     private String username;
     private String code;
@@ -151,5 +179,17 @@ class VerifyRequest {
     public void setCode(String code) { this.code = code; }
 
     public String getUsername() { return username; }
+    public String getCode() { return code; }
+}
+
+// Lớp DTO hứng dữ liệu Nâng cấp hạng
+class UpgradeRequest {
+    private Long userId;
+    private String code;
+
+    public void setUserId(Long userId) { this.userId = userId; }
+    public void setCode(String code) { this.code = code; }
+
+    public Long getUserId() { return userId; }
     public String getCode() { return code; }
 }

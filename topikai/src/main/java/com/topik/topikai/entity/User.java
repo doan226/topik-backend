@@ -3,7 +3,9 @@ package com.topik.topikai.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime; // Import thêm thư viện này để lấy mốc thời gian chi tiết
 
 @Entity
 @Data
@@ -29,9 +31,14 @@ public class User {
     private String verificationCode; // Lưu mã xác thực gửi qua email
     // -------------------------------------------------------
 
+    // --- CÁC TRƯỜNG PHỤC VỤ PHÂN QUYỀN (FREE / PREMIUM) ---
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role; // FREE_USER hoặc PREMIUM_USER
+    private Role role = Role.FREE_USER; // Tự động gán mặc định là tài khoản thường khi đăng ký
+
+    @Column(name = "premium_expiry_date")
+    private LocalDateTime premiumExpiryDate; // Lưu ngày giờ hết hạn gói Premium
+    // -------------------------------------------------------
 
     @CreationTimestamp
     @Column(updatable = false)

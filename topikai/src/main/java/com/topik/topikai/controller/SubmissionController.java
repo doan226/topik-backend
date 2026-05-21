@@ -1,19 +1,23 @@
 package com.topik.topikai.controller;
 
-import org.springframework.web.bind.annotation.CrossOrigin; // 1. NHỚ IMPORT DÒNG NÀY
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
+import com.topik.topikai.entity.User;
+import com.topik.topikai.entity.Role;
 import com.topik.topikai.entity.UserAnswer;
 import com.topik.topikai.repository.UserAnswerRepository;
+import com.topik.topikai.repository.UserRepository;
 import com.topik.topikai.service.GeminiService;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/v1/topik")
 @CrossOrigin(origins = "*")
 public class SubmissionController {
-
 
     @Autowired
     private GeminiService aiService;
@@ -21,8 +25,21 @@ public class SubmissionController {
     @Autowired
     private UserAnswerRepository userAnswerRepository;
 
+    @Autowired
+    private UserRepository userRepository; // Bổ sung kho chứa User
+
     @PostMapping("/submit")
     public String submitWriting(@RequestBody SubmitRequest request) {
+
+        // 1. Kiểm tra an ninh: Nếu đang nộp bài cho đề 52, phải chắc chắn đây là VIP
+        if (request.getQuestionNumber() == 52) {
+            Optional<User> userOptional = userRepository.findById(request.getUserId());
+            if (userOptional.isEmpty() || userOptional.get().getRole() != Role.PREMIUM_USER) {
+                return "{\"total_score\": 0, \"native_suggestion\": \"LỖI TỪ CHỐI TRUY CẬP: Bạn cần nâng cấp PREMIUM để AI chấm điểm đề 52.\"}";
+            }
+        }
+
+        // 2. Chạy luồng chấm điểm bình thường nếu thỏa mãn điều kiện
         String aiResult = aiService.gradeTopikWriting(request.getContent(), request.getQuestionNumber());
 
         try {
@@ -37,9 +54,7 @@ public class SubmissionController {
             int totalScore = jsonObject.optInt("total_score", 0);
 
             UserAnswer answer = new UserAnswer();
-            // 🎯 THAY ĐỔI QUAN TRỌNG: Lấy ID thật từ React gửi lên thay vì fix cứng 1L
             answer.setUserId(request.getUserId());
-
             answer.setQuestionNumber(request.getQuestionNumber());
             answer.setContent(request.getContent());
             answer.setAiFeedbackJson(cleanJson);
@@ -56,7 +71,6 @@ public class SubmissionController {
     }
 }
 
-// 🎯 Bổ sung thêm biến userId vào khung hứng dữ liệu
 class SubmitRequest {
     private String content;
     private int questionNumber;
