@@ -16,7 +16,7 @@ public class GeminiService {
     // 🎯 URL bản v1 chính thức gọi mô hình gemini-1.5-flash ổn định nhất (Đã xóa bỏ hoàn toàn xung đột Git)
     // ✅ ĐÚNG
     // 🎯 Sửa lại chính xác dòng này trên GitHub:
-    private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY;
+    private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + GEMINI_API_KEY;
 
     // --- PHƯƠNG THỨC 1: CHẤM ĐIỂM ---
     public String gradeTopikWriting(String studentText, int questionType) {
