@@ -20,7 +20,7 @@ public class CassoController {
     private UserRepository userRepository;
 
     // 🎯 MÃ BẢO MẬT API-KEY LẤY TỪ CASSO (Secure-Token)
-    private final String CASSO_SECURE_TOKEN = "ĐIỀN_MÃ_BẢO_MẬT_CỦA_BẠN_VÀO_ĐÂY";
+    private final String CASSO_SECURE_TOKEN = "SECURE_VIP_123456";
 
     @PostMapping("/casso-webhook")
     public ResponseEntity<?> handleCassoWebhook(
