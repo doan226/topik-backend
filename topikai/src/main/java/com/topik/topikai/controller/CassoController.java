@@ -75,4 +75,16 @@ public class CassoController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi hệ thống khi xử lý Webhook");
         }
     }
+    // ====================================================================
+    // API MỚI: Dành cho Frontend gọi lên để hỏi xem tài khoản đã lên VIP chưa
+    // ====================================================================
+    @GetMapping("/check-vip/{userId}")
+    public ResponseEntity<?> checkVipStatus(@PathVariable Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isPresent()) {
+            // Trả về Role mới nhất trong Database
+            return ResponseEntity.ok(Map.of("role", userOpt.get().getRole().name()));
+        }
+        return ResponseEntity.badRequest().body("Không tìm thấy người dùng");
+    }
 }
