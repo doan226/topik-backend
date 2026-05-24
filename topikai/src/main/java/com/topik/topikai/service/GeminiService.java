@@ -1,25 +1,40 @@
 package com.topik.topikai.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.json.JSONObject;
-import org.json.JSONArray;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestTemplate;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 @Service
 public class GeminiService {
 
-    // 🎯 Lấy API Key bảo mật hoàn toàn từ Environment của Render (Không lo bị quét khóa key)
-    private final String GEMINI_API_KEY = System.getenv("GEMINI_API_KEY");
+    private static final String MODEL_URL =
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
 
-    // 🎯 URL bản v1 chính thức gọi mô hình gemini-1.5-flash ổn định nhất (Đã xóa bỏ hoàn toàn xung đột Git)
-    // ✅ ĐÚNG
-    // 🎯 Sửa lại chính xác dòng này trên GitHub:
-    private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY;
+    @Value("${gemini.api.key:}")
+    private String geminiApiKeyFromProps;
 
-    // --- PHƯƠNG THỨC 1: CHẤM ĐIỂM ---
+    private String resolveApiKey() {
+        if (geminiApiKeyFromProps != null && !geminiApiKeyFromProps.isBlank()) {
+            return geminiApiKeyFromProps.trim();
+        }
+        String env = System.getenv("GEMINI_API_KEY");
+        return env != null ? env.trim() : "";
+    }
+
+    private String buildApiUrl() {
+        return MODEL_URL + resolveApiKey();
+    }
+
     public String gradeTopikWriting(String studentText, int questionType) {
+        String key = resolveApiKey();
+        if (key.isEmpty()) {
+            return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Chưa cấu hình GEMINI_API_KEY. Thêm biến môi trường hoặc gemini.api.key trong application.properties.\"}";
+        }
+
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -37,8 +52,12 @@ public class GeminiService {
         return callRealGeminiApi(restTemplate, headers, systemPrompt, true);
     }
 
-    // --- PHƯƠNG THỨC 2: TẠO BÀI TẬP ---
     public String analyzeErrorsAndGenerateTest(String errorHistory) {
+        String key = resolveApiKey();
+        if (key.isEmpty()) {
+            return "{\"main_weakness\": \"Chưa cấu hình API\", \"analysis\": \"Thiếu GEMINI_API_KEY.\", \"mini_test\": []}";
+        }
+
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -50,12 +69,10 @@ public class GeminiService {
         return callRealGeminiApi(restTemplate, headers, systemPrompt, false);
     }
 
-    // --- PHƯƠNG THỨC GỌI API CHUNG (ĐÃ FIX LỖI 400) ---
     private String callRealGeminiApi(RestTemplate restTemplate, HttpHeaders headers, String systemPrompt, boolean isGrading) {
         try {
             JSONObject jsonBody = new JSONObject();
 
-            // Đóng gói nội dung prompt gửi đi sạch sẽ, không chứa generation_config gây lỗi cấu trúc
             JSONArray contentsArray = new JSONArray();
             JSONObject partsObject = new JSONObject();
             JSONArray partsArray = new JSONArray();
@@ -69,12 +86,11 @@ public class GeminiService {
 
             HttpEntity<String> request = new HttpEntity<>(jsonBody.toString(), headers);
 
-            ResponseEntity<String> response = restTemplate.postForEntity(API_URL, request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(buildApiUrl(), request, String.class);
             JSONObject jsonObj = new JSONObject(response.getBody());
 
             String rawText = jsonObj.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
 
-            // 🛡️ BỘ LỌC BẢO HIỂM: Tự động bóc tách cắt bỏ dấu định dạng dạng ```json ... ``` nếu AI trả về thừa
             if (rawText.contains("```json")) {
                 rawText = rawText.substring(rawText.indexOf("```json") + 7);
                 if (rawText.contains("```")) {
@@ -94,7 +110,7 @@ public class GeminiService {
             System.err.println("🔴 CHI TIẾT LỖI: " + errorDetail);
 
             if (isGrading) {
-                return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Google API lỗi (" + e.getStatusCode() + "). Kiểm tra console để xem chi tiết!\" }";
+                return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Google API lỗi (" + e.getStatusCode() + "). Kiểm tra GEMINI_API_KEY!\" }";
             } else {
                 return "{\"main_weakness\": \"Lỗi kết nối API\", \"analysis\": \"⚠️ Google API lỗi (" + e.getStatusCode() + ").\", \"mini_test\": [] }";
             }

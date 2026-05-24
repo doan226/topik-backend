@@ -15,7 +15,6 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/payment")
-@CrossOrigin(origins = "https://topik-frontend-red.vercel.app")
 public class PaymentController {
 
     @Value("${vnpay.tmncode}")

@@ -14,7 +14,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@CrossOrigin(origins = "https://topik-frontend-red.vercel.app", allowCredentials = "true")
 public class AuthController {
 
     @Autowired
@@ -85,6 +84,8 @@ public class AuthController {
                 response.put("message", "Đăng nhập thành công!");
                 response.put("userId", user.getId());
                 response.put("role", user.getRole().name());
+                response.put("email", user.getEmail());
+                response.put("reminderEnabled", user.isReminderEnabled());
                 return response;
             }
         }
@@ -151,6 +152,27 @@ public class AuthController {
 
         response.put("success", false);
         response.put("message", "Mã giao dịch không hợp lệ!");
+        return response;
+    }
+
+    @PutMapping("/preferences/{userId}")
+    public Map<String, Object> updatePreferences(
+            @PathVariable Long userId,
+            @RequestBody Map<String, Object> body) {
+        Map<String, Object> response = new HashMap<>();
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            response.put("success", false);
+            response.put("message", "Không tìm thấy người dùng");
+            return response;
+        }
+        User user = userOpt.get();
+        if (body.containsKey("reminderEnabled")) {
+            user.setReminderEnabled(Boolean.TRUE.equals(body.get("reminderEnabled")));
+        }
+        userRepository.save(user);
+        response.put("success", true);
+        response.put("reminderEnabled", user.isReminderEnabled());
         return response;
     }
 }

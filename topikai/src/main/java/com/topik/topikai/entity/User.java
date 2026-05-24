@@ -40,6 +40,9 @@ public class User {
     private LocalDateTime premiumExpiryDate; // Lưu ngày giờ hết hạn gói Premium
     // -------------------------------------------------------
 
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private boolean reminderEnabled = true;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDate createdAt;

@@ -32,7 +32,7 @@ public class SecurityConfig {
                         // Mở khóa toàn bộ các API liên quan đến thanh toán VNPay
                         .requestMatchers("/api/v1/payment/**").permitAll()
                         // 1. Mở cửa tự do cho Đăng nhập, Đăng ký, Xác nhận OTP và các API công khai
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/topik/**", "/api/v1/dashboard/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**", "/api/v1/topik/**", "/api/v1/dashboard/**", "/api/v1/questions/**").permitAll()
 
                         // 2. BƯỚC 4 - PHÂN QUYỀN: Chỉ những User có Role là PREMIUM mới được vào đường dẫn này
                         .requestMatchers("/api/v1/premium-features/**").hasAuthority("PREMIUM")

@@ -31,8 +31,7 @@ public class ReminderScheduler {
 
         // 2. Vòng lặp gửi mail cho từng người
         for (User user : users) {
-            // (Tùy chọn): Bạn có thể thêm điều kiện if (user.isVerified()) để chỉ gửi cho người đã xác thực
-            if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+            if (user.getEmail() != null && !user.getEmail().isEmpty() && user.isReminderEnabled()) {
 
                 // Gọi hàm gửi mail vừa tạo ở Bước 2
                 emailService.sendReminderEmail(user.getEmail(), user.getUsername());
