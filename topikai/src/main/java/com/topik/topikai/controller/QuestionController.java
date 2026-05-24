@@ -45,6 +45,8 @@ public class QuestionController {
         m.put("prompt", q.getPrompt());
         m.put("answer", q.getAnswer());
         m.put("imageUrl", q.getImageUrl());
+        m.put("source", q.getSource());
+        m.put("expansionSet", q.getExpansionSet());
         return m;
     }
 }

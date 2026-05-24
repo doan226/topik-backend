@@ -52,6 +52,40 @@ public class GeminiService {
         return callRealGeminiApi(restTemplate, headers, systemPrompt, true);
     }
 
+    public String generateWritingQuestionSet(int topikSession, String excludeTopics) {
+        String key = resolveApiKey();
+        if (key.isEmpty()) {
+            return "{\"error\":\"Chưa cấu hình GEMINI_API_KEY.\"}";
+        }
+
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        String exclude = excludeTopics != null && !excludeTopics.isBlank()
+                ? excludeTopics
+                : "취업, 1인 가구, 스마트폰, 교사, 외국인 유학생, 인구, 지도자, 직업, 대중문화, 역사, 과정, 의사소통, 제주도, 스트레스";
+
+        String systemPrompt = "Bạn là chuyên gia biên soạn đề thi TOPIK II (쓰기). "
+                + "Sinh BỘ 4 CÂU HỎI VIẾT cho kỳ thi TOPIK số " + topikSession + ".\n"
+                + "CHỈ TRẢ VỀ JSON, KHÔNG MARKDOWN, KHÔNG GIẢI THÍCH.\n"
+                + "Tránh trùng chủ đề với các đề sau: " + exclude + ".\n\n"
+                + "Quy tắc:\n"
+                + "- Câu 51: hoàn thành câu ngắn, có ( ㉠ ) và ( ㉡ ), timeLimit=150, maxScore=10\n"
+                + "- Câu 52: hoàn thành đoạn văn logic, có ( ㉠ ) và ( ㉡ ), timeLimit=150, maxScore=10\n"
+                + "- Câu 53: mô tả biểu đồ/số liệu 200~300 chữ, kèm số liệu trong prompt, timeLimit=900, maxScore=30, imageUrl=null\n"
+                + "- Câu 54: nghị luận 600~700 chữ với 3 gợi ý con, timeLimit=3000, maxScore=50\n"
+                + "- prompt và answer bằng tiếng Hàn (answer câu 54 có thể thêm 1 dòng ghi chú tiếng Việt ngắn)\n"
+                + "- externalId = topik * 100 + type\n\n"
+                + "JSON BẮT BUỘC:\n"
+                + "{\n  \"questions\": [\n    {\n      \"externalId\": " + (topikSession * 100 + 51) + ",\n"
+                + "      \"topik\": " + topikSession + ",\n      \"type\": 51,\n"
+                + "      \"timeLimit\": 150,\n      \"maxScore\": 10,\n"
+                + "      \"prompt\": \"...\",\n      \"answer\": \"...\",\n      \"imageUrl\": null\n    }\n  ]\n}";
+
+        return callRealGeminiApi(restTemplate, headers, systemPrompt, false);
+    }
+
     public String analyzeErrorsAndGenerateTest(String errorHistory) {
         String key = resolveApiKey();
         if (key.isEmpty()) {

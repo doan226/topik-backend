@@ -28,7 +28,13 @@ public class WritingQuestion {
 
     private String imageUrl;
 
-    /** Stable id matching frontend QuestionBank (e.g. 3551) */
+    /** Stable id matching frontend QuestionBank (e.g. 3551, 90151) */
     @Column(unique = true)
     private Integer externalId;
+
+    /** official | expansion */
+    private String source = "official";
+
+    /** Premium expansion set number (1, 2, 3...) */
+    private Integer expansionSet;
 }
