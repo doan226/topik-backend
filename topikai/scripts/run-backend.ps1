@@ -2,6 +2,20 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot\..
 
+$envFile = Join-Path $PSScriptRoot "..\.env.backend"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*#' -or $_ -match '^\s*$') { return }
+        $pair = $_ -split '=', 2
+        if ($pair.Length -eq 2) {
+            $name = $pair[0].Trim()
+            $value = $pair[1].Trim().Trim('"')
+            Set-Item -Path "Env:$name" -Value $value
+        }
+    }
+    Write-Host "[topikai] Loaded env from .env.backend"
+}
+
 $port = 8080
 foreach ($candidate in 8080, 8081, 8082) {
     $inUse = Get-NetTCPConnection -LocalPort $candidate -State Listen -ErrorAction SilentlyContinue

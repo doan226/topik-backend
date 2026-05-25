@@ -75,6 +75,10 @@ public class SubmissionController {
             }
 
             JSONObject jsonObject = new JSONObject(cleanJson);
+            if (jsonObject.optBoolean("apiError", false)) {
+                return ResponseEntity.ok(cleanJson);
+            }
+
             int totalScore = jsonObject.optInt("total_score", 0);
 
             UserAnswer answer = new UserAnswer();

@@ -8,14 +8,32 @@ import org.springframework.web.client.RestTemplate;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.HashMap;
+import java.util.Map;
+
 @Service
 public class GeminiService {
 
-    private static final String MODEL_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
+    private static final String API_BASE =
+            "https://generativelanguage.googleapis.com/v1beta/models/";
+
+    private static final String[] FALLBACK_MODELS = {
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-flash-latest"
+    };
+
+    private static final int MAX_RETRIES = 5;
+    private static final long INITIAL_RETRY_MS = 2000;
+    private static final long MAX_RETRY_MS = 20000;
 
     @Value("${gemini.api.key:}")
     private String geminiApiKeyFromProps;
+
+    @Value("${gemini.api.model:gemini-2.5-flash-lite}")
+    private String geminiModel;
 
     private String resolveApiKey() {
         if (geminiApiKeyFromProps != null && !geminiApiKeyFromProps.isBlank()) {
@@ -25,14 +43,15 @@ public class GeminiService {
         return env != null ? env.trim() : "";
     }
 
-    private String buildApiUrl() {
-        return MODEL_URL + resolveApiKey();
+    private String buildApiUrl(String model) {
+        return API_BASE + model + ":generateContent?key=" + resolveApiKey();
     }
 
     public String gradeTopikWriting(String studentText, int questionType) {
         String key = resolveApiKey();
         if (key.isEmpty()) {
-            return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Chưa cấu hình GEMINI_API_KEY. Thêm biến môi trường hoặc gemini.api.key trong application.properties.\"}";
+            return apiErrorJson(true,
+                    "⚠️ Chưa cấu hình GEMINI_API_KEY. Thêm biến môi trường hoặc gemini.api.key trong application.properties.");
         }
 
         RestTemplate restTemplate = new RestTemplate();
@@ -104,53 +123,185 @@ public class GeminiService {
     }
 
     private String callRealGeminiApi(RestTemplate restTemplate, HttpHeaders headers, String systemPrompt, boolean isGrading) {
-        try {
-            JSONObject jsonBody = new JSONObject();
+        HttpEntity<String> request = buildRequest(headers, systemPrompt);
+        HttpStatusCodeException lastError = null;
 
-            JSONArray contentsArray = new JSONArray();
-            JSONObject partsObject = new JSONObject();
-            JSONArray partsArray = new JSONArray();
-            JSONObject textObject = new JSONObject();
+        for (String model : resolveModelCandidates()) {
+            for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    return executeCall(restTemplate, buildApiUrl(model), request);
+                } catch (HttpStatusCodeException e) {
+                    lastError = e;
+                    int status = e.getStatusCode().value();
+                    System.err.println("🔴 Google API [" + model + "] attempt " + attempt + ": " + e.getStatusCode());
+                    System.err.println("🔴 CHI TIẾT: " + e.getResponseBodyAsString());
 
-            textObject.put("text", systemPrompt);
-            partsArray.put(textObject);
-            partsObject.put("parts", partsArray);
-            contentsArray.put(partsObject);
-            jsonBody.put("contents", contentsArray);
-
-            HttpEntity<String> request = new HttpEntity<>(jsonBody.toString(), headers);
-
-            ResponseEntity<String> response = restTemplate.postForEntity(buildApiUrl(), request, String.class);
-            JSONObject jsonObj = new JSONObject(response.getBody());
-
-            String rawText = jsonObj.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-
-            if (rawText.contains("```json")) {
-                rawText = rawText.substring(rawText.indexOf("```json") + 7);
-                if (rawText.contains("```")) {
-                    rawText = rawText.substring(0, rawText.indexOf("```"));
-                }
-            } else if (rawText.contains("```")) {
-                rawText = rawText.substring(rawText.indexOf("```") + 3);
-                if (rawText.contains("```")) {
-                    rawText = rawText.substring(0, rawText.indexOf("```"));
+                    if (isRetryableStatus(status) && attempt < MAX_RETRIES) {
+                        sleepBeforeRetry(attempt, e);
+                        continue;
+                    }
+                    break;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    if (isGrading) {
+                        return apiErrorJson(true, "⚠️ Lỗi kết nối AI: " + e.getMessage());
+                    }
+                    return "{\"main_weakness\": \"Lỗi kết nối API\", \"analysis\": \"⚠️ " + e.getMessage() + "\", \"mini_test\": []}";
                 }
             }
-            return rawText.trim();
-
-        } catch (HttpStatusCodeException e) {
-            String errorDetail = e.getResponseBodyAsString();
-            System.err.println("🔴 LỖI TỪ GOOGLE API: " + e.getStatusCode());
-            System.err.println("🔴 CHI TIẾT LỖI: " + errorDetail);
-
-            if (isGrading) {
-                return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Google API lỗi (" + e.getStatusCode() + "). Kiểm tra GEMINI_API_KEY!\" }";
-            } else {
-                return "{\"main_weakness\": \"Lỗi kết nối API\", \"analysis\": \"⚠️ Google API lỗi (" + e.getStatusCode() + ").\", \"mini_test\": [] }";
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "{\"total_score\": 0, \"native_suggestion\": \"⚠️ Lỗi Java: " + e.getMessage() + "\"}";
         }
+
+        if (lastError != null) {
+            return buildApiFailureResponse(lastError, isGrading);
+        }
+        return isGrading
+                ? apiErrorJson(true, "⚠️ Không thể kết nối Google AI. Vui lòng thử lại sau.")
+                : "{\"main_weakness\": \"Lỗi kết nối API\", \"analysis\": \"Không thể kết nối Google AI.\", \"mini_test\": []}";
+    }
+
+    private String[] resolveModelCandidates() {
+        String primary = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-2.5-flash-lite";
+        String[] temp = new String[FALLBACK_MODELS.length + 1];
+        temp[0] = primary;
+        int idx = 1;
+        for (String fallback : FALLBACK_MODELS) {
+            if (!fallback.equals(primary)) {
+                temp[idx++] = fallback;
+            }
+        }
+        String[] result = new String[idx];
+        System.arraycopy(temp, 0, result, 0, idx);
+        return result;
+    }
+
+    private HttpEntity<String> buildRequest(HttpHeaders headers, String systemPrompt) {
+        JSONObject jsonBody = new JSONObject();
+        JSONArray contentsArray = new JSONArray();
+        JSONObject partsObject = new JSONObject();
+        JSONArray partsArray = new JSONArray();
+        JSONObject textObject = new JSONObject();
+
+        textObject.put("text", systemPrompt);
+        partsArray.put(textObject);
+        partsObject.put("parts", partsArray);
+        contentsArray.put(partsObject);
+        jsonBody.put("contents", contentsArray);
+
+        return new HttpEntity<>(jsonBody.toString(), headers);
+    }
+
+    private String executeCall(RestTemplate restTemplate, String url, HttpEntity<String> request) {
+        ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+        JSONObject jsonObj = new JSONObject(response.getBody());
+
+        String rawText = jsonObj.getJSONArray("candidates")
+                .getJSONObject(0)
+                .getJSONObject("content")
+                .getJSONArray("parts")
+                .getJSONObject(0)
+                .getString("text");
+
+        return stripMarkdownFence(rawText);
+    }
+
+    private String stripMarkdownFence(String rawText) {
+        if (rawText.contains("```json")) {
+            rawText = rawText.substring(rawText.indexOf("```json") + 7);
+            if (rawText.contains("```")) {
+                rawText = rawText.substring(0, rawText.indexOf("```"));
+            }
+        } else if (rawText.contains("```")) {
+            rawText = rawText.substring(rawText.indexOf("```") + 3);
+            if (rawText.contains("```")) {
+                rawText = rawText.substring(0, rawText.indexOf("```"));
+            }
+        }
+        return rawText.trim();
+    }
+
+    private boolean isRetryableStatus(int status) {
+        return status == 429 || status == 408 || status >= 500;
+    }
+
+    private void sleepBeforeRetry(int attempt, HttpStatusCodeException e) {
+        long delay = Math.min(INITIAL_RETRY_MS * (1L << (attempt - 1)), MAX_RETRY_MS);
+        delay += ThreadLocalRandom.current().nextLong(250, 750);
+
+        HttpHeaders responseHeaders = e.getResponseHeaders();
+        if (responseHeaders != null && responseHeaders.getFirst(HttpHeaders.RETRY_AFTER) != null) {
+            try {
+                long retryAfterSec = Long.parseLong(responseHeaders.getFirst(HttpHeaders.RETRY_AFTER));
+                delay = Math.max(delay, retryAfterSec * 1000L);
+            } catch (NumberFormatException ignored) {
+                // ignore invalid Retry-After
+            }
+        }
+
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private String buildApiFailureResponse(HttpStatusCodeException e, boolean isGrading) {
+        int status = e.getStatusCode().value();
+        String message;
+        if (status == 429) {
+            message = "⚠️ Google AI đang quá tải (429). Hệ thống đã thử lại tự động — vui lòng đợi 1–2 phút rồi chấm lại. Lượt chấm hôm nay không bị trừ.";
+        } else if (status == 401 || status == 403) {
+            message = "⚠️ GEMINI_API_KEY không hợp lệ hoặc hết hạn. Kiểm tra lại key trên Google AI Studio.";
+        } else {
+            message = "⚠️ Google API lỗi (" + e.getStatusCode() + "). Vui lòng thử lại sau.";
+        }
+
+        if (isGrading) {
+            return apiErrorJson(true, message);
+        }
+        return "{\"main_weakness\": \"Lỗi kết nối API\", \"analysis\": \"" + escapeJson(message) + "\", \"mini_test\": []}";
+    }
+
+    public Map<String, Object> checkConnectivity() {
+        Map<String, Object> info = new HashMap<>();
+        String key = resolveApiKey();
+        info.put("configured", !key.isEmpty());
+        info.put("primaryModel", geminiModel != null && !geminiModel.isBlank() ? geminiModel.trim() : "gemini-2.5-flash-lite");
+
+        if (key.isEmpty()) {
+            info.put("status", "missing_key");
+            return info;
+        }
+
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> request = buildRequest(headers, "Reply with exactly: OK");
+
+        for (String model : resolveModelCandidates()) {
+            try {
+                String text = executeCall(restTemplate, buildApiUrl(model), request);
+                info.put("status", "ok");
+                info.put("model", model);
+                info.put("sample", text.length() > 40 ? text.substring(0, 40) : text);
+                return info;
+            } catch (HttpStatusCodeException e) {
+                info.put("lastError", e.getStatusCode().toString());
+                info.put("lastModel", model);
+            } catch (Exception e) {
+                info.put("lastError", e.getMessage());
+                info.put("lastModel", model);
+            }
+        }
+
+        info.put("status", "error");
+        return info;
+    }
+
+    private String apiErrorJson(boolean apiError, String message) {
+        return "{\"total_score\": 0, \"apiError\": " + apiError + ", \"native_suggestion\": \"" + escapeJson(message) + "\"}";
+    }
+
+    private String escapeJson(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

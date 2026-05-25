@@ -18,6 +18,14 @@ if not defined PORT (
 
 set "FRONTEND_ENV=C:\topik-frontend\.env.development.local"
 echo VITE_API_PORT=!PORT!> "%FRONTEND_ENV%"
+
+if exist "%~dp0.env.backend" (
+  for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%~dp0.env.backend") do (
+    if not "%%A"=="" set "%%A=%%B"
+  )
+  echo [topikai] Loaded .env.backend
+)
+
 echo.
 echo ============================================
 echo   TOPIK Backend: http://localhost:!PORT!
