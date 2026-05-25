@@ -32,7 +32,7 @@ public class SecurityConfig {
                         // Mở khóa toàn bộ các API liên quan đến thanh toán VNPay
                         .requestMatchers("/api/v1/payment/**").permitAll()
                         // 1. Mở cửa tự do cho Đăng nhập, Đăng ký, Xác nhận OTP và các API công khai
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/topik/**", "/api/v1/dashboard/**", "/api/v1/questions/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**", "/api/v1/topik/**", "/api/v1/dashboard/**", "/api/v1/questions/**", "/api/v1/practice/**", "/api/v1/project/**", "/api/v1/hanja/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").permitAll()
 
                         // 2. BƯỚC 4 - PHÂN QUYỀN: Chỉ những User có Role là PREMIUM mới được vào đường dẫn này
@@ -56,7 +56,7 @@ public class SecurityConfig {
                 "https://topik-frontend-red.vercel.app"      // Tên miền Vercel thật của bạn trên mạng
         ));
 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true); // Bây giờ dòng này đã hợp pháp vì domain đã rõ ràng
 

@@ -3,6 +3,7 @@ package com.topik.topikai.controller;
 import com.topik.topikai.entity.Role;
 import com.topik.topikai.entity.User;
 import com.topik.topikai.repository.UserRepository;
+import com.topik.topikai.service.HanjaPackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,9 @@ public class CassoController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private HanjaPackService hanjaPackService;
 
     // 🎯 MÃ BẢO MẬT API-KEY LẤY TỪ CASSO (Secure-Token)
     private final String CASSO_SECURE_TOKEN = "SECURE_VIP_123456";
@@ -62,6 +66,27 @@ public class CassoController {
                             user.setRole(Role.PREMIUM_USER);
                             userRepository.save(user);
                             System.out.println("✅ [CASSO] ĐÃ NÂNG CẤP VIP THÀNH CÔNG CHO USER ID: " + userId);
+                        }
+                    }
+                }
+
+                // Gói Hán Hàn riêng: TOPIKHANJA KIIP {userId} — 99k
+                if (description != null && description.toUpperCase().contains("TOPIKHANJA") && amount >= HanjaPackService.KIIP_PACK_PRICE) {
+                    String upper = description.toUpperCase();
+                    String[] parts = upper.split("TOPIKHANJA");
+                    if (parts.length > 1) {
+                        String remainder = parts[1].trim();
+                        String[] tokens = remainder.split("\\s+");
+                        String skuToken = tokens.length > 0 ? tokens[0] : "";
+                        String packId = hanjaPackService.resolvePackIdFromSku(skuToken);
+                        if (packId != null) {
+                            String idPart = remainder.replace(skuToken, "").trim();
+                            String idString = idPart.split("[^0-9]")[0];
+                            if (!idString.isEmpty()) {
+                                Long userId = Long.parseLong(idString);
+                                hanjaPackService.unlockPack(userId, packId);
+                                System.out.println("✅ [CASSO] UNLOCK HANJA PACK " + packId + " CHO USER ID: " + userId);
+                            }
                         }
                     }
                 }
