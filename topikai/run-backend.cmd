@@ -16,7 +16,7 @@ if not defined PORT (
   exit /b 1
 )
 
-set "FRONTEND_ENV=C:\topik-frontend\.env.development.local"
+call "%~dp0scripts\resolve-frontend-env.cmd"
 echo VITE_API_PORT=!PORT!> "%FRONTEND_ENV%"
 
 if exist "%~dp0.env.backend" (

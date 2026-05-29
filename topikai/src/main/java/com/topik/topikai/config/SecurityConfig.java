@@ -36,6 +36,7 @@ public class SecurityConfig {
                         // 1. Mở cửa tự do cho Đăng nhập, Đăng ký, Xác nhận OTP và các API công khai
                         .requestMatchers("/api/v1/health", "/api/v1/health/**").permitAll()
                         .requestMatchers("/api/v1/auth/**", "/api/v1/topik/**", "/api/v1/dashboard/**", "/api/v1/questions/**", "/api/v1/practice/**", "/api/v1/project/**", "/api/v1/hanja/**").permitAll()
+                        .requestMatchers("/api/v1/dict/**", "/api/v1/exams/interactive/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").permitAll()
 
                         // 2. BƯỚC 4 - PHÂN QUYỀN: Chỉ những User có Role là PREMIUM mới được vào đường dẫn này

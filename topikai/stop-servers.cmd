@@ -6,4 +6,6 @@ for %%P in (8080 8081 8082 8083 8084 8085) do (
     taskkill /F /PID %%i >nul 2>&1
   )
 )
-echo [topikai] Xong. Chay lai: .\run-backend.cmd
+echo [topikai] Xong.
+echo   Chay lai nen:  start-backend-background.cmd
+echo   Chay hien cua so: run-backend.cmd

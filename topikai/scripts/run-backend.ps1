@@ -27,7 +27,7 @@ foreach ($candidate in 8080, 8081, 8082) {
 }
 $env:PORT = "$port"
 
-$frontendEnv = "C:\topik-frontend\.env.development.local"
+$frontendEnv = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..\topik-frontend")) ".env.development.local"
 "VITE_API_PORT=$port" | Set-Content -Path $frontendEnv -Encoding utf8
 Write-Host "[topikai] Backend: http://localhost:$port"
 Write-Host "[topikai] Da ghi $frontendEnv -> VITE_API_PORT=$port"
